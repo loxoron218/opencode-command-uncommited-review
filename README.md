@@ -353,7 +353,7 @@ Found improvements? Consider:
 ## License
 
 This agent configuration is adapted from:
-- Qodo pr-agent (Apache 2.0 License)
+- Qodo pr-agent (AGPL-3.0 License)
 - Qodo agents repository (MIT License)
 
 OpenCode agent configuration follows OpenCode's license.
@@ -363,4 +363,4 @@ OpenCode agent configuration follows OpenCode's license.
 - [OpenCode Agents Documentation](https://opencode.ai/docs/agents/)
 - [Qodo pr-agent GitHub](https://github.com/qodo-ai/pr-agent)
 - [Qodo Agents GitHub](https://github.com/qodo-ai/agents)
-- [OpenCode GitHub](https://github.com/opencode-ai/opencode)
+- [OpenCode GitHub](https://github.com/anomalyco/opencode)
