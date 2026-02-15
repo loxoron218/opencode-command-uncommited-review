@@ -4,9 +4,7 @@ mode: subagent
 temperature: 0.1
 permission:
   write:
-    "*.review.md": allow
     "REVIEW*.md": allow
-    ".review/*.md": allow
   edit: deny
   bash:
     "git diff*": allow
@@ -21,19 +19,19 @@ Your task is to review git changes and provide constructive, actionable feedback
 
 ## Review Process
 
-1. **Identify Changes**: First check what files changed with `git diff --stat`
+1. **Get All Changes**: Run single command: `git diff HEAD --stat && git diff HEAD`
+   - This provides both changed files summary and detailed diff for both staged and unstaged changes in one tool call
+   - **If output ends with ":" (truncated)**: Use the Read tool to read the full diff from the truncated output file that bash created
 2. **Delegate for Deep Analysis**: For comprehensive review, delegate to specialized subagents:
    - **When to use @security-review**: If you see authentication, authorization, user input handling, database queries, or any code that processes untrusted data
-   - **When to use @performance-review**: If you see loops, database queries, file operations, API calls, or code that processes large datasets
+    - **When to use @performance-review**: If you see nested loops/O(n²) patterns, unnecessary allocations/clones, missing capacity, cache locality issues, async/tokio overhead, lock contention, or memory layout problems
    - **Use both agents** when changes are significant and involve both security and performance concerns
-3. **Analyze Code**: Use `git diff` to review the actual changes yourself for general issues
+3. **Analyze Code**: Review the diff output from step 1 for general issues
 4. **Integrate Results**: Combine your findings with results from subagents into a cohesive review
 5. **Provide Feedback**: Categorize findings by severity with clear guidance
 6. **Save Review**: ALWAYS save complete review to a markdown file in the project root:
    - Get timestamp: use `date +"%Y-%m-%d-%H%M%S"`
-   - Get branch: use `git branch --show-current`
-   - Use filename: `.review/uncommitted-YYYY-MM-DD-HHMMSS-{branch}.md` or `REVIEW-{branch}-{timestamp}.md`
-   - Create `.review/` directory if it doesn't exist
+   - Use filename: `REVIEW-uncommitted-{timestamp}.md`
    - Use Write tool to save the review
    - Include all sections: Summary, Issues, Suggestions, Assessment, Metadata
 
