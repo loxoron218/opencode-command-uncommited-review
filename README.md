@@ -1,70 +1,74 @@
-# Uncommitted Review Agent for OpenCode
+# Uncommitted Review Commands for OpenCode
 
-A specialized OpenCode subagent for reviewing uncommitted git changes, adapted from Qodo's PR review methodology.
+A set of OpenCode commands for reviewing uncommitted git changes, providing structured, actionable feedback focusing on code quality, security, and performance.
 
 ## Overview
 
-This agent reviews your uncommitted changes against a target branch (default: main) and provides structured, actionable feedback focusing on code quality, security, performance, and maintainability.
+These commands review your uncommitted changes and provide structured, actionable feedback across multiple focus areas. The main command can delegate to specialized subcommands for deep security and performance analysis.
 
-**Inspired by:**
-- Qodo's `pr-agent` - LocalGitProvider architecture
-- Qodo's agents repository - Structured output and configuration
-- OpenCode's Plan agent - Read-only analysis with permissions
+## Commands
 
-## Key Features
-
-### From Qodo pr-agent
-- **Structured severity levels**: Critical, High, Medium, Low
-- **Line-specific feedback**: References exact file:line from diffs
-- **Comprehensive focus areas**: Security, Performance, Correctness, Maintainability
-- **Actionable output**: Clear suggestions with code examples
-- **Quality scoring**: X/10 assessment with commit readiness
-
-### From Qodo agents
-- **Customizable configuration**: Adjust via OpenCode's agent system
-- **Structured output format**: Consistent markdown structure
-- **Flexible severity thresholds**: Focus on what matters to you
-
-### OpenCode Integration
-- **Read-only permissions**: Can't accidentally modify your code
-- **Bash access control**: Only git commands allowed
-- **Subagent mode**: Invoke via `@uncommitted-review` or automatically
-- **Temperature optimized**: Low randomness for consistent reviews
+| Command | Description |
+|---------|-------------|
+| `/uncommitted-review` | Main review command - analyzes all changes |
+| `/security-review` | Specialized security-focused review |
+| `/performance-review` | Specialized performance-focused review |
 
 ## Installation
 
-1. **Create agent directory** (if needed):
+1. **Clone or copy this repository** to your project:
    ```bash
-   mkdir -p ~/.config/opencode/agent
+   # Option 1: Clone to your project (recommended for per-project config)
+   git clone <this-repo> .opencode
+
+   # Option 2: Copy specific commands
+   cp -r .opencode/command ~/.config/opencode/
    ```
 
-2. **Copy agent file**:
-   ```bash
-   cp opencode-agent-uncommitted-review.md ~/.config/opencode/agent/
-   ```
-
-3. **Restart OpenCode** to load the new agent
+2. **Restart OpenCode** to load the new commands
 
 ## Usage
 
-### Method 1: Manual Invocation
+### Main Review
 
-In OpenCode TUI, type:
 ```
-@uncommitted-review
+/uncommitted-review
 ```
 
-The agent will:
-1. Run `git diff --stat` to see what changed
-2. Run `git diff` to analyze the changes
-3. Provide structured feedback
+The main review command will:
+1. Run `git diff HEAD --stat && git diff HEAD` to get all changes
+2. Analyze the diff for general code quality issues
+3. Optionally delegate to security/performance subcommands for deeper analysis
+4. Save a complete review to `REVIEW-uncommitted-{timestamp}.md`
 
-### Method 2: Before Commit Hook Integration
+### Specialized Reviews
+
+```
+/security-review
+```
+
+Focused security analysis looking for:
+- Input validation issues
+- Authentication & authorization flaws
+- Data exposure risks
+- Cryptography issues
+
+```
+/performance-review
+```
+
+Focused performance analysis looking for:
+- Algorithmic complexity issues
+- Data structure & memory layout problems
+- Allocation reduction opportunities
+- Async/concurrency issues
+
+### Before Commit Hook Integration
 
 Add to `~/.gitconfig`:
 ```ini
 [alias]
-    review = !opencode run \"@uncommitted-review\"
+    review = !opencode run "/uncommitted-review"
 ```
 
 Then run before committing:
@@ -73,7 +77,7 @@ git review
 git commit
 ```
 
-### Method 3: Pre-commit Hook
+### Pre-commit Hook
 
 Create `.git/hooks/pre-commit`:
 ```bash
@@ -81,7 +85,7 @@ Create `.git/hooks/pre-commit`:
 echo "Running uncommitted review..."
 
 # Run OpenCode review
-opencode run "@uncommitted-review" > review_output.md
+opencode run "/uncommitted-review" > review_output.md
 
 # Check if review found critical/high issues
 if grep -q "## Critical Issues\|## High Priority Issues" review_output.md; then
@@ -101,7 +105,9 @@ Make it executable:
 chmod +x .git/hooks/pre-commit
 ```
 
-## Output Example
+## Output
+
+Reviews are saved to `REVIEW-uncommitted-{timestamp}.md` with the following structure:
 
 ```markdown
 ## Summary
@@ -112,44 +118,23 @@ Modified 3 files in auth module. Changes focus on JWT token validation and sessi
   - Description: Direct string concatenation in query allows injection
   - Impact: Attackers could bypass authentication
   - Suggestion: Use parameterized queries
-  - Code Example:
-    ```python
-    # Bad:
-    query = f"SELECT * FROM users WHERE token = '{token}'"
-    
-    # Good:
-    query = "SELECT * FROM users WHERE token = ?"
-    cursor.execute(query, (token,))
-    ```
 
 ## High Priority Issues
 - **src/auth/session.py:18** - Resource Leak
   - Description: Database connection not closed on exception
   - Impact: Connection pool exhaustion under load
-  - Suggestion: Use context manager
-  - Code Example:
-    ```python
-    # Good:
-    with db.get_connection() as conn:
-        conn.execute(...)
-    ```
 
 ## Medium Priority Issues
 - **src/auth/validator.py:67** - Missing Type Hints
   - Description: Function returns int but has no annotation
-  - Impact: Reduced IDE support and type checking
-  - Suggestion: Add -> int return type
 
 ## Low Priority Issues
 - **src/auth/jwt.py:8** - Magic Number
   - Description: Hardcoded timeout value without explanation
-  - Impact: Maintenance difficulty
-  - Suggestion: Extract to named constant
 
 ## Suggestions
 - Consider adding unit tests for the new validate_token function
 - JWT secret should be in environment variables, not hardcoded
-- Session cleanup job might need error handling
 
 ## Overall Assessment
 - Quality Score: 6/10
@@ -159,9 +144,9 @@ Modified 3 files in auth module. Changes focus on JWT token validation and sessi
 
 ## Configuration
 
-### Adjust Severity Focus
+### Customize Focus Areas
 
-Edit the agent file to change focus areas or severity definitions. For example, to focus only on security:
+Edit the command files to adjust focus areas:
 
 ```markdown
 ## Focus Areas
@@ -173,80 +158,51 @@ Prioritize issues in this order:
    - Authentication and authorization checks
    - Secret/credential handling
    - SQL/query injection risks
-   - XSS vulnerabilities
-
-[...skip other categories...]
 ```
 
-### Change Temperature
+### Adjust Temperature
 
-Edit the frontmatter to adjust response randomness:
+Edit the frontmatter in the command file:
 ```markdown
-temperature: 0.1  # More deterministic (0.0-0.2)
-temperature: 0.3  # Balanced (0.3-0.5)
-temperature: 0.7  # More creative (0.6-1.0)
+---
+description: Reviews uncommitted changes for code quality issues
+agent: uncommitted-review
+subtask: false
+temperature: 0.1
+---
 ```
 
 ### Modify Tool Permissions
 
-Allow additional bash commands if needed:
+The commands use the underlying agent. Edit the agent file in `.opencode/agents/` to adjust permissions:
+
 ```markdown
 tools:
   bash:
     "git diff*": allow
     "git log*": allow
-    "npm test": allow  # Add this
+    "npm test": allow
     "*": deny
 ```
-
-### Change Model
-
-Use a different model:
-```markdown
-model: openai/gpt-5-codex
-# or
-model: anthropic/claude-haiku-4-20250514
-```
-
-## Differences from Qodo pr-agent
-
-| Aspect | Qodo pr-agent | OpenCode Uncommitted Review |
-|--------|---------------|---------------------------|
-| **Context** | Pull Requests | Uncommitted changes |
-| **Provider** | GitHub/GitLab/etc + Local | Local only |
-| **Diff Source** | PR diff API | `git diff` |
-| **Output Format** | YAML | Markdown |
-| **Invocation** | `/review` command | `@uncommitted-review` subagent |
-| **Integration** | GitHub Actions, webhooks | Pre-commit hooks, CLI |
-| **Permissions** | Write to PR comments | Read-only (Plan mode) |
-
-## Differences from Qodo agents
-
-| Aspect | Qodo agents | OpenCode Uncommitted Review |
-|--------|-------------|---------------------------|
-| **Config Format** | TOML/YAML | Markdown with frontmatter |
-| **Tool System** | MCP servers | OpenCode tools |
-| **Execution** | Qodo CLI | OpenCode TUI/CLI |
-| **Output Schema** | JSON with validation | Markdown structure |
-| **Exit Expressions** | CI/CD blocking | Manual review |
 
 ## Advanced Usage
 
 ### Review Against Specific Branch
 
-Tell the agent what branch to compare against:
 ```
-@uncommitted-review Compare against develop branch, not main
+/uncommitted-review Compare against develop branch, not main
 ```
 
 ### Focus on Specific Files
+
 ```
-@uncommitted-review Only review src/auth/*.py files
+/uncommitted-review Only review src/auth/*.py files
 ```
 
 ### Ignore Test Files
+
 ```
-@uncommitted-review Ignore all test files, only review source code
+/uncommitted-review Ignore all test files, only review source code
 ```
 
 ### Code Quality Gate for CI
@@ -255,7 +211,7 @@ In GitHub Actions:
 ```yaml
 - name: Review uncommitted changes
   run: |
-    opencode run "@uncommitted-review" > review.md
+    opencode run "/uncommitted-review" > review.md
     
 - name: Check for critical issues
   run: |
@@ -266,33 +222,6 @@ In GitHub Actions:
     fi
 ```
 
-### Custom Output Format
-
-Modify the agent's output format section to integrate with your tools:
-
-```markdown
-## Output Format
-
-Present your review in JSON format for CI integration:
-
-\`\`\`json
-{
-  "score": 7,
-  "ready": false,
-  "issues": [
-    {
-      "severity": "critical",
-      "file": "src/auth.py",
-      "line": 42,
-      "title": "SQL Injection",
-      "description": "...",
-      "suggestion": "..."
-    }
-  ]
-}
-\`\`\`
-```
-
 ## Best Practices
 
 ### 1. Run Frequently
@@ -300,52 +229,54 @@ Present your review in JSON format for CI integration:
 - Review before pushing to remote
 - Review before pull requests to catch issues early
 
-### 2. Act on Feedback
+### 2. Use Specialized Commands
+
+- Run `/security-review` for auth, input handling, database code
+- Run `/performance-review` for hot paths, data structures, algorithms
+- Use both for significant changes covering both areas
+
+### 3. Act on Feedback
+
 - Fix Critical and High issues before committing
 - Consider Medium issues (fix or document why not)
 - Low issues are suggestions, not requirements
 
-### 3. Use with Human Review
-- This agent is a tool, not a replacement for code review
+### 4. Use with Human Review
+
+- This command is a tool, not a replacement for code review
 - Use it to catch obvious issues before human review
 - Combine with peer review for best results
 
-### 4. Customize for Your Team
-- Adjust focus areas based on your priorities
-- Add project-specific patterns to what to check
-- Configure severity thresholds for your standards
-
-### 5. Learn from Feedback
-- Note recurring issues to improve patterns
-- Update the agent's prompt with project-specific guidance
-- Share findings with team to prevent similar issues
-
 ## Troubleshooting
 
-### Agent not found
-- Check file is in `~/.config/opencode/agent/` or `.opencode/agent/`
-- Restart OpenCode after adding the agent
-- Verify filename doesn't have special characters
+### Command not found
+
+- Check files are in `.opencode/command/` or `~/.config/opencode/command/`
+- Restart OpenCode after adding commands
+- Verify filenames don't have special characters
 
 ### No changes detected
+
 - Ensure you have uncommitted changes (`git status`)
 - Check you're in a git repository
 - Verify changes are tracked (not in `.gitignore`)
 
 ### Too much output
-- Increase `num_max_findings` equivalent in the prompt
-- Raise severity threshold to Medium or High
+
+- Increase focus by using specialized commands
+- Raise severity threshold in the command prompt
 - Add file exclusions in your instructions
 
 ### False positives
-- Add project-specific exceptions to the prompt
-- Use `temperature: 0.0` for more deterministic results
-- Document patterns the agent should ignore
+
+- Add project-specific exceptions to the command prompt
+- Use lower temperature for more deterministic results
+- Document patterns the command should ignore
 
 ## Contributing
 
 Found improvements? Consider:
-1. Adjusting the prompt for better results
+1. Adjusting the prompts for better results
 2. Adding new focus areas relevant to your stack
 3. Improving the output format
 4. Sharing your configuration with the community
